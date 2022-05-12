@@ -139,9 +139,8 @@ def coleta_anuncios(lista_links):
     for link in lista_links:
         inicio = time.time()
         cont += 1
-        if cont % 50 == 0:
-            print('Dormindo por 15 segundos!')
-            time.sleep(15)
+        
+            
             
         URL = getUrl(link)
         
@@ -203,7 +202,9 @@ def coleta_anuncios(lista_links):
 
         
         anuncios.append(dados_anuncio)
-        
+        if cont % 50 == 0:
+            print('Dormindo por 15 segundos!')
+            time.sleep(15)
         
 
         cria_json('dados_anuncios_capturados.json', anuncios)
@@ -212,7 +213,9 @@ def coleta_anuncios(lista_links):
         print(F'   >>> CAPTURADO EM: {tempo} seg.') 
         print('') 
     print(f'===== Nova qtd de anuncios: {len(anuncios)}')
+    print(len(anuncios))
     return anuncios
+    
 
 def captura_marca(soup):
    
