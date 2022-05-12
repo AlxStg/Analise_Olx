@@ -1,55 +1,13 @@
 
-
-def coleta_links_anuncios():
-    import os.path
-    import time
-
-    inicio_coleta = time.time() 
-
-    if os.path.isfile('links_lst.json'):
-        print('>>>>>>>>> Já existe uma lista de arquivos armazenada!')
-        opt_carregar_links = 0
-        while True:
-            opt_carregar_links = int(input('Digite 1 para carregar os links salvos ou 2 para carregar nova lista de links: '))
-            if opt_carregar_links == 1:
-                print('>>>>>>>>> CARREGANDO A LISTA EXISTENTE!!!')
-                lista_links = carrega_json('links_lst.json')
-                fim_coleta = time.time()
-                tempo = fim_coleta - inicio_coleta
-                print(F'---->  TEMPO: {tempo} seg.')
-                break
-            if opt_carregar_links == 2:
-                print('>>>>>>>>> CARREGANDO NOVA LISTA !!!')
-                lista_links = coletaLinks()
-                cria_json('links_lst.json', lista_links)
-                fim_coleta = time.time()
-                tempo = fim_coleta - inicio_coleta
-                print(F'---->  TEMPO: {tempo} seg.')
-                break
-            else:
-                print('>>> ERRO --> Opção inválida!')
-        return lista_links
-
-    else:
-        print('>>>>>>>>> Não existe uma lista de arquivos armazenada!\n >>>>>>>> CARREGANDO NOVA LISTA!')
-        lista_links = coletaLinks()
-        cria_json('links_lst.json', lista_links)
-        return lista_links
-    
 def getUrl(paginacao):
-    return "https://mg.olx.com.br/belo-horizonte-e-regiao/autos-e-pecas/motos?o="+str(paginacao)+"&pe=11000&ps=2000&re=39&rs=18"
-
-def innerHTML(element):
-    """Returns the inner HTML of an element as a UTF-8 encoded bytestring"""
-    return element.encode_contents()
+    return "https://mg.olx.com.br/belo-horizonte-e-regiao/autos-e-pecas/motos?o="+str(paginacao)+"&pe=11000&ps=2000&re=39&rs=18&sf=1"
 
 def coletaLinks():
 # Coleta os links das paginas de anuncios:
     from bs4 import BeautifulSoup
     import requests
     import re
-
-
+    
     opt = int(input('Quantas páginas? '))
     links = []
     cont = 0
@@ -66,10 +24,51 @@ def coletaLinks():
                 cont += 1
                 links.append(link.get('href'))
     
-    print('=' * 100)
-    print(f'   >>>>> {opt} paginas percorridas.\n   >>>>> {cont} links de anuncio capturados.')
-    print('=' * 100)
-    return links   
+    print('='*100)
+    print(f'------ {opt} páginas percorridas.')
+    print(f'------ {len(links)} links encontrados.')
+    return links
+
+def exclui_links_existentes(lista_nova):
+    import os.path
+        
+    if os.path.isfile('links_lst.json'):
+        lista_armazenada = carrega_json('links_lst.json')
+        print(f'------ Haviam {len(lista_armazenada)} links na lista armazenada.')
+        
+        linksDeAnunciosColetados = []
+        anunciosColetados = carrega_json('dados_anuncios_capturados.json')
+        for anuncio in anunciosColetados:
+            linksDeAnunciosColetados.append(anuncio['Url'])
+        
+        cont_a = 0
+        for link in lista_armazenada:
+            if link not in linksDeAnunciosColetados:
+                del lista_armazenada[cont_a]
+
+        cont_apagados = 0
+        cont = 0
+        for link in lista_nova:
+            if link in lista_armazenada:
+                del lista_nova[cont]
+                cont_apagados += 1
+            cont += 1
+
+        
+
+        
+        print(f'------ {cont_apagados} que ja existiam foram apagados.')
+        print(f'------ {len(lista_nova)} links seram retornados para coleta de dados de anuncio.')
+        lista_para_armazenar = lista_armazenada + lista_nova
+        print(f'------ A nova lista armazenada tem {len(lista_para_armazenar)} links.')
+        cria_json('links_lst.json', lista_para_armazenar)
+    else:
+        cria_json('links_lst.json', lista_nova)
+            
+    return lista_nova   
+
+def innerHTML(element):
+    return element.encode_contents()
 
 def captura_dados_anuncio(soup, tipo):
     contador = 0
@@ -128,23 +127,26 @@ def coleta_anuncios(lista_links):
     from lxml import etree
     import requests
     import time
-    
-    
+    import os.path
+        
+    if os.path.isfile('dados_anuncios_capturados.json'):
+        anuncios = carrega_json('dados_anuncios_capturados.json')
+        print(f'===== Qtd de anunciosarmazenados: {len(anuncios)}')
+    else:
+        anuncios = []
 
-    anuncios = []
     cont = 0
     for link in lista_links:
         inicio = time.time()
         cont += 1
         if cont % 50 == 0:
-            print('Dormindo por 10 segundos!')
-            time.sleep(10)
+            print('Dormindo por 15 segundos!')
+            time.sleep(15)
             
         URL = getUrl(link)
-        print('')
-        print('')
+        
         print(f'>>> {cont} - Lendo > {link}')
-        print('')
+       
         HEADERS = ({'User-Agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 \
                     (KHTML, like Gecko) Chrome/44.0.2403.157 Safari/537.36',\
                     'Accept-Language': 'en-US, en;q=0.5'})
@@ -158,33 +160,27 @@ def coleta_anuncios(lista_links):
         marca = captura_marca(soup)
         marca_dct = {'Marca': marca}
         dados_anuncio.update(marca_dct)
-        print(f'Marca: {dados_anuncio["Marca"]}')
 
         modelo = captura_dados_anuncio(soup, 'Modelo')
         dados_anuncio.update(modelo)
-        print(f'Modelo: {dados_anuncio["Modelo"]}')
 
         cilindrada = captura_dados_anuncio(soup, 'Cilindrada')
         dados_anuncio.update(cilindrada)
-        print(f'Cilindrada: {dados_anuncio["Cilindrada"]}')
 
         try:
             ano = captura_dados_anuncio(soup, 'Ano')
             dados_anuncio.update(ano)
         except:
             dados_anuncio.update({'Ano' : 'N/A'})
-        print(f'Ano: {dados_anuncio["Ano"]}')
 
         try:
             km = captura_dados_anuncio(soup, 'Quilometragem')
             dados_anuncio.update(km)
         except:
             dados_anuncio.update({'Quilometragem' : 'N/A'})
-        print(f'Quilometragem: {dados_anuncio["Quilometragem"]}')
 
         cidade = captura_dados_anuncio(soup, 'Município')
         dados_anuncio.update(cidade)
-        print(f'Município: {dados_anuncio["Município"]}')
 
         valor = captura_valor(soup)
         numeros = ''
@@ -194,29 +190,28 @@ def coleta_anuncios(lista_links):
         preco = int(numeros)
         valor_dct = {'Valor': preco}
         dados_anuncio.update(valor_dct)
-        print(f'Valor: {dados_anuncio["Valor"]}')
 
         data = captura_data(soup)
         dados_anuncio.update(data)
-        print(f'Data: {dados_anuncio["Data"]}')
 
         codigo = link[-12::].split('-')[1]
         dct_codigo = {'Codigo': codigo}
         dados_anuncio.update(dct_codigo)
-        print(f'Código: {dados_anuncio["Codigo"]}')
 
         url = {'Url': link}
         dados_anuncio.update(url)
-        print(f'Url: {dados_anuncio["Url"]}')
 
         
         anuncios.append(dados_anuncio)
+        
+        
+
         cria_json('dados_anuncios_capturados.json', anuncios)
         fim = time.time()
         tempo = fim - inicio
-        print(F'\n >>> CAPTURADO EM: {tempo} seg.') 
-          
-
+        print(F'   >>> CAPTURADO EM: {tempo} seg.') 
+        print('') 
+    print(f'===== Nova qtd de anuncios: {len(anuncios)}')
     return anuncios
 
 def captura_marca(soup):
