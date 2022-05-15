@@ -1,6 +1,10 @@
+# Métodos referentes á captura de dados:
+
+import json
+
 
 def getUrl(paginacao):
-    return "https://mg.olx.com.br/belo-horizonte-e-regiao/autos-e-pecas/motos?o="+str(paginacao)+"&pe=11000&ps=2000&re=39&rs=18&sf=1"
+    return "https://mg.olx.com.br/belo-horizonte-e-regiao/autos-e-pecas/motos?o="+str(paginacao)+"&pe=10000&ps=2000&re=39&rs=22&sf=1"
 
 def coletaLinks():
 # Coleta os links das paginas de anuncios:
@@ -215,9 +219,72 @@ def coleta_anuncios(lista_links):
     print(f'===== Nova qtd de anuncios: {len(anuncios)}')
     print(len(anuncios))
     return anuncios
-    
 
 def captura_marca(soup):
    
     classe = soup.find('title')
     return classe.text.split(' ')[0]
+
+
+# Métodos referentes àsanálise de dados:
+def converte_csv_json(fonte_csv, destino_json):
+
+
+    import csv
+    import json
+
+    jsonFilePath = destino_json
+
+    dados = []
+
+    # Abre e lê o arquivo csv
+    with open(fonte_csv, 'r') as csvFile:
+        csvReader = csv.DictReader(csvFile)
+        for rows in csvReader:
+            dados.append(rows)
+        print('CONVERSÃO BEM SUCEDIDA!')
+    # Cria o arquivo json
+    with open(jsonFilePath, 'w') as jsonFile:
+        jsonFile.write(json.dumps(dados, indent=4))
+
+
+def corrige_dados_fipe(json_fipe):
+    
+    arquivo = carrega_json(json_fipe)
+    #Corrige codigo fipe que vem como "00"
+    try:
+        for c in arquivo:
+            c["Codigo Fipe"] = c['null'][0].strip()
+            del c['null']
+    except:
+        pass
+          
+
+    for f in range(0, 20):   
+        contador_marca = 0
+        for c in arquivo:
+            marcas_desejadas = 'HONDA, SUZUKI, DAFRA, YAMAHA'
+            if c['Marca'].upper() not in marcas_desejadas:
+                print(arquivo[contador_marca])
+                try:
+                    del arquivo[contador_marca]
+                    print(' >>> APAGADO')
+                except:
+                    print(' >>> nÃO apagado')
+            contador_marca += 1
+         
+    for f in range(0, 20):   
+        for c in arquivo:
+            cilindradas = c['id'].split('-')[1].strip().split(' ')[1]
+            print(cilindradas)
+
+
+
+
+    cria_json('dados_fipe.json', arquivo)
+    print(' ------ CORREÇÕES PRÉ-DEFINIDAS REALIZADAS COM SUCESSO!')
+
+
+
+
+
