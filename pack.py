@@ -62,7 +62,7 @@ def exclui_links_existentes(lista_nova):
 
         
         print(f'------ {cont_apagados} que ja existiam foram apagados.')
-        print(f'------ {len(lista_nova)} links seram retornados para coleta de dados de anuncio.')
+        print(f'------ {len(lista_nova)} links serão retornados para coleta de dados de anuncio.')
         lista_para_armazenar = lista_armazenada + lista_nova
         print(f'------ A nova lista armazenada tem {len(lista_para_armazenar)} links.')
         cria_json('links_lst.json', lista_para_armazenar)
@@ -226,10 +226,8 @@ def captura_marca(soup):
     return classe.text.split(' ')[0]
 
 
-# Métodos referentes àsanálise de dados:
+# Métodos referentes à análise de dados:
 def converte_csv_json(fonte_csv, destino_json):
-
-
     import csv
     import json
 
@@ -247,42 +245,139 @@ def converte_csv_json(fonte_csv, destino_json):
     with open(jsonFilePath, 'w') as jsonFile:
         jsonFile.write(json.dumps(dados, indent=4))
 
-
 def corrige_dados_fipe(json_fipe):
-    
-    arquivo = carrega_json(json_fipe)
-    #Corrige codigo fipe que vem como "00"
-    try:
-        for c in arquivo:
-            c["Codigo Fipe"] = c['null'][0].strip()
-            del c['null']
-    except:
-        pass
-          
-
-    for f in range(0, 20):   
-        contador_marca = 0
-        for c in arquivo:
-            marcas_desejadas = 'HONDA, SUZUKI, DAFRA, YAMAHA'
-            if c['Marca'].upper() not in marcas_desejadas:
-                print(arquivo[contador_marca])
+    for x in range(0,10):
+        arquivo = carrega_json(json_fipe)
+        # Apaga dados desnecessários da lista fipe:
+        try:
+            for c in arquivo:
                 try:
-                    del arquivo[contador_marca]
-                    print(' >>> APAGADO')
+                    del c["Combustivel"]
                 except:
-                    print(' >>> nÃO apagado')
-            contador_marca += 1
-         
-    for f in range(0, 20):   
-        for c in arquivo:
-            cilindradas = c['id'].split('-')[1].strip().split(' ')[1]
-            print(cilindradas)
+                    pass
+                try:
+                    del c["MesReferencia"]
+                except:
+                    pass
+                try:
+                    del c["Autenticacao"]
+                except:
+                    pass
+                try:
+                    del c["TipoVeiculo"]
+                except:
+                    pass
+                try:
+                    del c["SiglaCombustivel"]
+                except:
+                    pass
+                try:
+                    del c["DataConsulta"]
+                except:
+                    pass
+
+        except:
+            pass
+            
+    for x in range(0,10):
+        try:
+            for c in arquivo:
+                c['Codigo Fipe'] = c['null'][0]
+                print (c['Codigo Fipe'])
+                del c['null']
+        except:
+            pass
 
 
 
-
-    cria_json('dados_fipe.json', arquivo)
+    cria_json(json_fipe, arquivo)
     print(' ------ CORREÇÕES PRÉ-DEFINIDAS REALIZADAS COM SUCESSO!')
+
+def compara_ano(fonte_fipe, fonte_olx):
+    
+    lista = []
+    contador = 0
+    for c in fonte_fipe:
+        if c['Ano'] == fonte_olx['Ano']:
+            lista.append(contador)
+        contador += 1
+    return lista
+
+def compara_marca(lista_ano, fonte_fipe, anuncio):
+    
+    lista_resultado = []
+    for c in lista_ano:
+        if fonte_fipe[c]['Marca'] == anuncio['Marca']:
+            lista_resultado.append(c)
+    return lista_resultado
+
+def best_match_fipe(anuncio, lista_marca, fipes):
+    # Encontrar melhor resultado por id:
+                    
+                    ## Compara quantas palavras do id do anuncio coincidem no fipe:
+                    lista_com_pts = []
+                    mod_an_quebr = anuncio['Modelo'].split()
+                    for c in lista_marca:
+                        pontos_no_id = {}
+                        pts_mod = 0
+                        for palavra in mod_an_quebr:
+                            if palavra in fipes[c]['id']:
+                                pts_mod += 1
+                        pontos_no_id["posicao"] = c                             
+                        pontos_no_id['pts'] = pts_mod
+                        lista_com_pts.append(pontos_no_id)
+
+                    ## Encontra maior pontuação
+                    match_fipe = []
+                    maior_pts = 0
+                    for c in lista_com_pts:
+                        if c['pts'] > maior_pts:
+                            maior_pts = c['pts']
+                    
+                    for c in lista_com_pts:
+                        if c['pts'] == maior_pts:
+                            match_fipe.append(c['posicao'])
+                    return match_fipe
+
+
+def list_cods_fipe (melhor_resultado, fipes):
+
+    lst_cod_fipe = []
+    for c in melhor_resultado:
+        dict_cods_fipe = {} 
+        cod = fipes[c]['Codigo Fipe']
+        
+        numeros = ''
+        for caractere in fipes[c]['Valor']:
+            if caractere.isdigit():
+                numeros += caractere
+        valor = int(numeros)
+
+        dict_cods_fipe["Codigo"] = cod
+        dict_cods_fipe["id"] = fipes[c]['id']
+        dict_cods_fipe["Valor"] = valor
+        lst_cod_fipe.append(dict_cods_fipe)
+
+
+    return lst_cod_fipe
+
+
+
+
+def cruza_dados():
+    contador = 0
+    anuncios = carrega_json('dados_anuncios_capturados.json')
+    fipes = carrega_json('dados_fipe.json')
+    
+    for anuncio in anuncios:
+        contador += 1
+        print(f'>>>>>>>>>>> {contador} de {len(anuncios)}')
+        lista_ano = compara_ano(fipes, anuncio)
+        lista_marca = compara_marca(lista_ano, fipes, anuncio)
+        melhor_resultado = best_match_fipe(anuncio, lista_marca, fipes)
+        anuncio['cod_fipe'] = [list_cods_fipe(melhor_resultado, fipes)]
+
+    cria_json('dados_anuncios_capturados.json' , anuncios)
 
 
 

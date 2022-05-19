@@ -56,7 +56,7 @@ while True:
 
                 3. Executar cruzamento de listas;
 
-                4. AnalizaR corrigir eventuais erros de cruzamento;
+                4. Analizar e corrigir eventuais erros de cruzamento;
 
                 5. Exportar lista cruzada para ".csv";
 
@@ -76,12 +76,23 @@ while True:
                
                 corrige_dados_fipe("dados_fipe.json")
         
+            if opt_menu_analise == 3:
+                cruza_dados()
+
+            if opt_menu_analise == 4:
+                contador = 0
+                anuncios = carrega_json('dados_anuncios_capturados.json')
+                fipes = carrega_json('dados_fipe.json')
+                for c in anuncios:
+                    for d in c['cod_fipe']:
+                        print(len(d))
 
 
 
+                        
 
 
-
+                   
 
 
 
@@ -94,7 +105,7 @@ while True:
 
     if opt_menu not in (1,2,3):
         print('/'*50)
-        print(f"{'ERRO - Opção invalida - Tente n;ovamente.':^50}")
+        print(f"{'ERRO - Opção invalida - Tente novamente.':^50}")
         print('/'*50)
         
 
