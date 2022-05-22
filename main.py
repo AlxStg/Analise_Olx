@@ -15,7 +15,7 @@ while True:
         - MENU PRINCIPAL 
 
         1. Captura de dados;
-        2. Analise de Dados;
+        2. Tratamento de listas;
         3. Fechar.
     '''
     )
@@ -45,7 +45,7 @@ while True:
             
             print('')
             print('--' * 25)
-            print(f"{'- MENU DE ANÁLISE -':^50}")
+            print(f"{'- MENU DE TRATAMENTO DE LISTAS -':^50}")
             print('--' * 25)
             print('')
             print(
@@ -56,11 +56,11 @@ while True:
 
                 3. Executar cruzamento de listas;
 
-                4. Analizar e corrigir eventuais erros de cruzamento;
+                4. Correção automática de erros de cruzamento;
 
-                5. Exportar lista cruzada para ".csv";
+                5. Correção manual de erros de cruzamento;
 
-                6. Voltar ao menu principal.
+                6. Exportar CSV.
 
                 '''
                 )
@@ -75,27 +75,31 @@ while True:
             if opt_menu_analise == 2:
                
                 corrige_dados_fipe("dados_fipe.json")
+
         
             if opt_menu_analise == 3:
                 cruza_dados()
 
+
             if opt_menu_analise == 4:
-                contador = 0
-                anuncios = carrega_json('dados_anuncios_capturados.json')
-                fipes = carrega_json('dados_fipe.json')
-                for c in anuncios:
-                    for d in c['cod_fipe']:
-                        print(len(d))
+                
+                
+                contador_fipes_em_anuncios()
 
-
-
-                        
-
+                correcao_automatica_cod_fipe_em_anuncios()
 
                    
+                    
 
+            if opt_menu_analise == 5:
+                exibe_anuncio_p_correcao()
 
+                cria_diferenca_fipe()
 
+            if opt_menu_analise == 6:
+                exporta_csv()
+                
+                        
 
     if opt_menu == 3:
         print('$'*50)

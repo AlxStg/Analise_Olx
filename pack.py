@@ -206,7 +206,7 @@ def coleta_anuncios(lista_links):
 
         
         anuncios.append(dados_anuncio)
-        if cont % 50 == 0:
+        if (cont - 1) % 50 == 0:
             print('Dormindo por 15 segundos!')
             time.sleep(15)
         
@@ -224,6 +224,8 @@ def captura_marca(soup):
    
     classe = soup.find('title')
     return classe.text.split(' ')[0]
+
+
 
 
 # Métodos referentes à análise de dados:
@@ -276,31 +278,53 @@ def corrige_dados_fipe(json_fipe):
                 except:
                     pass
 
+                try:
+                    c["id"] = c["Modelo"]
+                    del c["Modelo"]
+                except:
+                    pass
+
+                try:
+                    c["Ano"] = c["AnoModelo"]
+                    del c["AnoModelo"]
+                except:
+                    pass
+
+                try:
+                    c["Codigo Fipe"] = c["CodigoFipe"]
+                    del c["CodigoFipe"]
+                except:
+                    pass
+
+                try:
+                    valor_cor = c["Valor"].split(",")[0]
+                    c["Valor"] = valor_cor
+                except:
+                    pass
+
+                if c["Marca"] not in c["id"]:
+                    new = f'{c["Marca"]} - {c["id"]}'
+                    c["id"] = new 
+
         except:
             pass
-            
-    for x in range(0,10):
-        try:
-            for c in arquivo:
-                c['Codigo Fipe'] = c['null'][0]
-                print (c['Codigo Fipe'])
-                del c['null']
-        except:
-            pass
+
+           
+    
 
 
 
     cria_json(json_fipe, arquivo)
-    print(' ------ CORREÇÕES PRÉ-DEFINIDAS REALIZADAS COM SUCESSO!')
+    print(' >>>=======> CORREÇÕES PRÉ-DEFINIDAS REALIZADAS COM SUCESSO!')
 
 def compara_ano(fonte_fipe, fonte_olx):
     
     lista = []
     contador = 0
     for c in fonte_fipe:
-        if c['Ano'] == fonte_olx['Ano']:
+        if str(c['Ano']) == str(fonte_olx['Ano']):
             lista.append(contador)
-        contador += 1
+        contador += 1 
     return lista
 
 def compara_marca(lista_ano, fonte_fipe, anuncio):
@@ -317,6 +341,35 @@ def best_match_fipe(anuncio, lista_marca, fipes):
                     ## Compara quantas palavras do id do anuncio coincidem no fipe:
                     lista_com_pts = []
                     mod_an_quebr = anuncio['Modelo'].split()
+                    for c in lista_marca:
+                        pontos_no_id = {}
+                        pts_mod = 0
+                        for palavra in mod_an_quebr:
+                            if palavra in fipes[c]['id']:
+                                pts_mod += 1
+                        pontos_no_id["posicao"] = c                             
+                        pontos_no_id['pts'] = pts_mod
+                        lista_com_pts.append(pontos_no_id)
+
+                    ## Encontra maior pontuação
+                    match_fipe = []
+                    maior_pts = 0
+                    for c in lista_com_pts:
+                        if c['pts'] > maior_pts:
+                            maior_pts = c['pts']
+                    
+                    for c in lista_com_pts:
+                        if c['pts'] == maior_pts:
+                            match_fipe.append(c['posicao'])
+                    return match_fipe
+
+def best_match_fipe_2(anuncio, lista_marca, fipes):
+    # Encontrar melhor resultado por id:
+                    
+                    ## Compara quantas palavras do id do anuncio coincidem no fipe:
+                    lista_com_pts = []
+                    url_split = anuncio['Url'].split()
+                    mod_an_quebr = anuncio['Url'].split()
                     for c in lista_marca:
                         pontos_no_id = {}
                         pts_mod = 0
@@ -361,9 +414,6 @@ def list_cods_fipe (melhor_resultado, fipes):
 
     return lst_cod_fipe
 
-
-
-
 def cruza_dados():
     contador = 0
     anuncios = carrega_json('dados_anuncios_capturados.json')
@@ -371,15 +421,164 @@ def cruza_dados():
     
     for anuncio in anuncios:
         contador += 1
-        print(f'>>>>>>>>>>> {contador} de {len(anuncios)}')
+        if contador % 10 == 0:
+            print(f'>>>>>>>>>>> {contador} de {len(anuncios)}')
         lista_ano = compara_ano(fipes, anuncio)
         lista_marca = compara_marca(lista_ano, fipes, anuncio)
         melhor_resultado = best_match_fipe(anuncio, lista_marca, fipes)
-        anuncio['cod_fipe'] = [list_cods_fipe(melhor_resultado, fipes)]
+        anuncio['cod_fipe'] = list_cods_fipe(melhor_resultado, fipes)
+        anuncio['valor_fipe'] = 0
 
     cria_json('dados_anuncios_capturados.json' , anuncios)
 
+def contador_fipes_em_anuncios():
+    
+    anuncios = carrega_json('dados_anuncios_capturados.json')
+    
+    cont_fipe_atribuido = 0
+    cont_fipe_unico = 0
+    cont_fipe_duplo = 0
+    cont_fipe_multiplo = 0
+    cont_sem_fipe = 0
+    for c in anuncios:
+        if c['valor_fipe'] > 0:
+            cont_fipe_atribuido += 1
+        if len(c['cod_fipe']) == 1:
+            c['valor_fipe'] = c['cod_fipe'][0]['Valor']
+            cont_fipe_unico += 1
+        if c['valor_fipe'] == 0 and len(c['cod_fipe']) == 2:
+            cont_fipe_duplo += 1
+        if c['valor_fipe'] == 0 and len(c['cod_fipe']) >2:
+            cont_fipe_multiplo += 1
+        if len(c['cod_fipe']) == 0:
+            cont_sem_fipe += 1
+            
+            
+    print('§ ' * 45)
+    print(f'=====> {cont_fipe_atribuido:_^6} com valor fipe atribuido.')    
+    print(f'=====> {cont_fipe_unico:_^6} com 1 cód. fipe associado.')
+    print(f'=====> {cont_fipe_duplo:_^6} com 2 fipes associados.')
+    print(f'=====> {cont_fipe_multiplo:_^6} com MULTIPLOS códs. fipes associados.')
+    if cont_sem_fipe > 0:
+        print(f'=====> {cont_sem_fipe:_^6} NÃO TEM códs. fipes associados.')
+    print('§ ' * 45)
+    print('')
 
+def correcao_automatica_cod_fipe_em_anuncios():
+    anuncios = carrega_json('dados_anuncios_capturados.json')
+    fipes = carrega_json('dados_fipe.json')
+    
+    
+
+    print('>>>>> Tentando executar correções automaticamente')
+    print('')
+    for c in anuncios:
+        if len(c['cod_fipe']) == 1:
+            c['valor_fipe'] = c['cod_fipe'][0]['Valor']
+        
+        if len(c['cod_fipe']) == 2:
+            media = (c['cod_fipe'][0]['Valor'] + c['cod_fipe'][1]['Valor']) / 2
+            if c['cod_fipe'][0]['Valor'] > c['cod_fipe'][1]['Valor']:
+                diferenca = ((c['cod_fipe'][0]['Valor'] - media) / c['cod_fipe'][0]['Valor']) * 100
+            else:
+                diferenca = ((c['cod_fipe'][1]['Valor'] - media) / c['cod_fipe'][1]['Valor']) * 100
+            if diferenca <= 6.2:
+                c["valor_fipe"] = media
+
+    cria_json('dados_anuncios_capturados.json' , anuncios)    
+
+def exibe_anuncio_p_correcao():
+    anuncios = carrega_json('dados_anuncios_capturados.json')
+    fipes = carrega_json('dados_fipe.json')
+    contador = 0
+    for y in anuncios:
+        
+
+        if y['valor_fipe'] == 0:
+            print('')
+            print('§' * 100)
+            print(f"Url: {y['Url']}")
+            print(f"Marca: {y['Marca']}")
+            print(f"Modelo: {y['Modelo']}")
+            print(f"Cilindrada: {y['Cilindrada']}")
+            print(f"Ano: {y['Ano']}")
+            print('.' * 80)
+            print('-=-=-=- Códs. fipe associados. -=-=-=-')
+            
+            cont_cod = 0
+            for z in y['cod_fipe']:
+                cont_cod += 1
+                print(f"-= {cont_cod} =- : {z['id']}")
+            print(
+            '''
+            1. Escolher a partir dos existentes;
+            2. Inserir ValorFipe manualmente.
+            3. Apagar anuncio;
+            4. Skip;
+            5. Voltar.
+            '''
+            )
+            opt = int(input('>>>>> Opção: '))
+            
+            if opt == 1:
+                opt_cod = int(input('Fipe correspondente: ')) - 1
+                y['valor_fipe'] = y['cod_fipe'][opt_cod]['Valor']
+                print(f">>>>>> ALTERADO - {y['cod_fipe'][opt_cod]['id']}")
+
+            if opt == 2:
+                valor_fipe_manual = int(input('Valor: '))
+                y['valor_fipe'] = valor_fipe_manual
+                print(f'>>>>>> ALTERADO - {y["valor_fipe"]}')
+
+
+
+
+
+            if opt == 3:
+                del anuncios[contador]
+                print('>>> APAGAR')
+                
+                
+
+
+            if opt == 4:
+                pass
+
+            
+
+
+
+            cria_json('dados_anuncios_capturados.json' , anuncios)
+            print("===> Confirmado")
+
+        contador += 1
+
+def cria_diferenca_fipe():
+    anuncios = carrega_json('dados_anuncios_capturados.json')
+    try:
+        for i in anuncios:
+            diferença_fipe = i['valor_fipe'] - i['Valor']
+            i['diferença_fipe'] = diferença_fipe
+            cria_json('dados_anuncios_capturados.json' , anuncios)
+            print("===> Confirmado")
+    except:
+        print ("NUM DEU!!")
+        pass
+
+def exporta_csv():
+    import csv
+
+    anuncios = carrega_json('dados_anuncios_capturados.json')
+    header = ['Modelo', 'Cilindrada', 'Ano', 'Valor', 'valor_fipe', 'Url', 'Codigo', 'cod_fipe', 'Data', 'Marca', 'Quilometragem', 'diferença_fipe', 'Município']
+    try:
+        with open('anuncios_tratados.csv', 'w', newline='') as f:
+            writer = csv.DictWriter(f, fieldnames=header)
+            writer.writeheader()
+            for elem in anuncios:
+                writer.writerow(elem)
+        print('>>>> ARQUIVO .csv CRIADO COM SUCESSO! <<<')
+    except IOError:
+        print("I/O error")
 
 
 
